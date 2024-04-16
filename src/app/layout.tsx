@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 
+import Header from "@/components/Header";
+import Providers from "@/utils/Providers";
+
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
@@ -15,8 +18,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={inter.className}>{children}</body>
-    </html>
+    <Providers>
+      <html lang="en">
+        <body
+          className={`pt-12 bg-gray-900 h-screen overflow-y-auto overflow-x-hidden ${inter.className}`}
+        >
+          <Header />
+          {children}
+        </body>
+      </html>
+    </Providers>
   );
 }
