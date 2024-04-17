@@ -54,17 +54,17 @@ export default function BuyCreditsPage() {
     }
 
     try {
-      const account = await wallet?.getAccount();
+      const account = wallet?.getAccount();
       if (!account) return;
 
       console.log("Approving...");
       const approveTx = prepareContractCall({
         contract: tokenContract,
         // Pass the method signature that you want to call
-        method: "function approve(uint256 amount)",
+        method: "function approve(address spender, uint256 amount)",
         // and the params for that method
         // Their types are automatically inferred based on the method signature
-        params: [toWei((tier?.price || 5).toString())],
+        params: [escrowContract?.address, toWei((tier?.price || 5).toString())],
       });
 
       const approveTxResult = await sendTransaction({
@@ -75,7 +75,7 @@ export default function BuyCreditsPage() {
 
       console.log("Depositing...");
       const depositTx = prepareContractCall({
-        contract: tokenContract,
+        contract: escrowContract,
         // Pass the method signature that you want to call
         method: "function deposit(uint256 amount)",
         // and the params for that method
