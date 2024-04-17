@@ -5,7 +5,7 @@ type ButtonProps = {
   label: string;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
-  onClick: () => void;
+  onClick?: () => void;
   className?: string;
 };
 

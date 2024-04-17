@@ -1,19 +1,24 @@
 "use client";
 
+import { ethers } from "ethers";
+import { defineChain } from "thirdweb";
 import { ConnectButton } from "thirdweb/react";
 import { createWallet, Wallet } from "thirdweb/wallets";
+
 import { useChain } from "@/contexts/Chain";
 
 export default function MetaMaskConnect() {
-  const { client, setWallet } = useChain();
-  const wallets = [createWallet("io.metamask")];
+  const { client, setWallet, escrowBalance } = useChain();
+
+  const wallets = [
+    createWallet("io.metamask"),
+    createWallet("com.coinbase.wallet"),
+    createWallet("me.rainbow"),
+  ];
 
   const handleConnect = async (wallet: Wallet) => {
-    console.log(wallet);
     setWallet(wallet);
-    const account = await wallet?.getAccount();
-    console.log(account);
-    console.log(account?.address);
+    const account = wallet?.getAccount();
 
     try {
       const options = {
@@ -32,6 +37,7 @@ export default function MetaMaskConnect() {
       console.log("logged", logged);
     } catch (e) {
       console.log("error", e);
+
       const options = {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,17 +58,23 @@ export default function MetaMaskConnect() {
   };
 
   return (
-    <div>
+    <div className="flex items-center justify-center text-white gap-2">
+      {escrowBalance != undefined && <div>
+        Credits: {ethers.utils.formatEther(escrowBalance)}
+      </div>}
+
       {client && (
         <ConnectButton
-          autoConnect={false}
+          autoConnect={true}
           client={client}
+          chain={defineChain(2710)}
           wallets={wallets}
           theme={"dark"}
           connectModal={{ size: "wide" }}
           onConnect={handleConnect}
         />
       )}
+
     </div>
   );
 }

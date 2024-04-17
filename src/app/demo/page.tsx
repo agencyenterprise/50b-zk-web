@@ -1,17 +1,100 @@
 "use client";
 
+import { useState } from "react";
+
 import Button from "@/components/Button";
 import InputField from "@/components/Input";
 import LoadingSpinner from "@/components/Loading";
-import {
-  BuildingOffice2Icon,
-  EnvelopeIcon,
-  PhoneIcon,
-} from "@heroicons/react/24/outline";
-import { useState } from "react";
+
+import { encryptWitness } from "@/utils/cryptography";
+import { useChain } from "@/contexts/Chain";
+
+const base64ExampleWitness = "d3RucwIAAAACAAAAAQAAACgAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAIAAACAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const base64ExampleR1csScript = "cjFjcwEAAAADAAAAAgAAAHgAAAAAAAAAAQAAAAIAAAAAAADwk/XhQ5FwuXlI6DMoXViBgbZFULgpoDHhck5kMAEAAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwAQAAAEAAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAEAAAAAAAAAAgAAAAQAAAAAAAAAAQAAAAMAAAAgAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAMAAAAAAAAA";
 
 export default function DemoPage() {
   const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({
+    witness: "",
+    r1csScript: "",
+  });
+  const [logs, setLogs] = useState("");
+  const [proof, setProof] = useState("");
+
+  const { fetchEscrowBalance } = useChain();
+ 
+  const handleChange = (e: any) => {
+    setForm({
+      ...form,
+      [e.target.id]: e.target.value,
+    });
+  };
+
+  const handleSubmit = async (e: any) => {
+    e.preventDefault();
+    setLoading(true);
+
+    setLogs(`Creating a new job...`);
+
+    // const job = await callHub("/jobs", {
+    //   clientId: "123",
+    //   r1csScript: form.r1csScript,
+    // });
+    const job = {
+      id: 1,
+      encryptKey: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUExL1ZuQ3VBQjhSeC9sa0JHMDF4RApOUk8rQkF1MVBraGtpOFYxWWYrV3lHajlYU0JzRFhpb3o5MG5jUXNkZnNhUXBuck1qTExIbG9veWpSY1ZTMzNiCk5ycHdld1lNRUI3TEYzVUluOHF0Q1pjTm5RYjU2UjBKZjBFcWhTYjFQWWpEVGxEYS9QMVdkT2xsdi9qS3ZuNm4KYVh5d3FVcVVFZ1lUbVhvcnpwaUtKcy9OTlFsWmwwSmMvdGdhWURXSE96R1hmTk5pdU9lMlM5VUoxUUR0L1YxVApDTXp4MFJsQU15VzBDcURlc1JnRTJpNFhXaWxEczNQUnR4MW1VWnVhVWJUZkxHWDRVbkxLQXZncHd5c05vVGczCjduOUZsVmdCUy9DL2NxdS9kTzkxL0xIWWhVT0s0MUVIZjNTTFIyMFVNaGpmd2RMMHFZVm45Wlh0Mi9uKytBaTEKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
+    };
+
+    await delay(3000);
+    setLogs(logs => `${logs}Job ${job.id} created.\nEncrypting witness using Worker public key:\n${Buffer.from(job.encryptKey, "base64").toString("utf-8")}\n`);
+
+    const { base64EncryptedWitness, base64EncryptedAesKey, base64AesIv } = encryptWitness(job.encryptKey, form.witness);
+    setLogs(logs => `${logs}Witness encrypted succesfuly.\nStarting job...`);
+
+    // await callHub("/jobs/start", {
+    //   jobId: job.id,
+    //   witness: base64EncryptedWitness,
+    //   aesKey: base64EncryptedAesKey,
+    //   aesIv: base64AesIv,
+    // });
+
+    await delay(3000);
+    setLogs(logs => `${logs}Done.\nWaiting for proof...`);
+
+    await delay(3000);
+    setProof("0x1234567890");
+    setLogs(logs => `${logs}Done.`);
+
+    fetchEscrowBalance();
+
+    setLoading(false);
+  };
+
+  const delay = (delayInms: number) => {
+    return new Promise(resolve => setTimeout(resolve, delayInms));
+  };
+
+  const callHub = async (url: string, body: any) => {
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    };
+
+    const response = await fetch(
+      `${process.env.NEXT_PUBLIC_HUB_URL}${url}`,
+      options,
+    );
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch data from the server.");
+    }
+
+    const data = await response.json();
+
+    return data;
+  }
+
   return (
     <div className="relative isolate bg-gray-900">
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
@@ -55,10 +138,12 @@ export default function DemoPage() {
             />
           </div>
         </div>
+
         <form
           action="#"
           method="POST"
           className="px-6 pb-24 pt-20 sm:pb-32 lg:px-8 lg:py-40"
+          onSubmit={handleSubmit}
         >
           <div className="mx-auto max-w-xl lg:mr-0 lg:max-w-lg">
             <h3 className="text-2xl font-bold tracking-tight text-white pb-6">
@@ -66,21 +151,25 @@ export default function DemoPage() {
               proof
             </h3>
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-              <InputField label="Witness" id="witness" />
-              <InputField label="R1CS Script" id="script" />
+              <InputField label="Witness (Base64 encoded)" id="witness" defaultValue={base64ExampleWitness} onChange={handleChange} />
+              <InputField label="R1CS Script (Base64 encoded)" id="r1csScript" defaultValue={base64ExampleR1csScript} onChange={handleChange} />
             </div>
             <div className="mt-8 flex justify-end">
               <Button
                 id="send"
-                type="button"
+                type="submit"
                 label="Compute Proof"
-                onClick={() => {
-                  console.log("Send message");
-                }}
               />
             </div>
+            {logs && <div className="mt-3 text-white">
+              <h3 className="text-2xl font-bold tracking-tight text-white">Logs:</h3>
+              <pre className="leading-8 text-gray-300">
+                {logs}
+              </pre>
+            </div>}
           </div>
         </form>
+
         <div className="relative px-6 pb-20 pt-24 sm:pt-32 lg:static lg:px-8 lg:py-40">
           <div className="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
             <h3 className="text-2xl  font-bold tracking-tight text-white">
@@ -90,14 +179,7 @@ export default function DemoPage() {
               <LoadingSpinner />
             ) : (
               <p className="mt-6 text-lg leading-8 text-gray-300">
-                {JSON.stringify(
-                  {
-                    proof: "0x1234567890",
-                    result: "true",
-                  },
-                  null,
-                  2,
-                )}
+                {proof}
               </p>
             )}
           </div>
