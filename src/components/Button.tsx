@@ -25,7 +25,7 @@ export default function Button({
       onClick={onClick}
       className={`${
         className || ""
-      } rounded-md bg-orange-400 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-orange-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300`}
+      } rounded-md bg-orange-400 px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm disabled:bg-gray-400 hover:bg-orange-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-300`}
     >
       {label}
     </button>

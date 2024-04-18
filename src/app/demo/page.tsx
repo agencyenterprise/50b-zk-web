@@ -19,7 +19,7 @@ export default function DemoPage() {
   const [logs, setLogs] = useState("");
   const [proof, setProof] = useState("");
 
-  const { fetchEscrowBalance } = useChain();
+  const { fetchEscrowBalance, escrowBalance } = useChain();
  
   const handleChange = (e: any) => {
     setForm({
@@ -40,8 +40,14 @@ export default function DemoPage() {
       clientId,
       r1csScript: form.r1csScript,
     });
+
+    if (!job.success) {
+      setLogs(logs => `${logs}Job not created: ${job.error}`);
+      setLoading(false);
+      return;
+    }
     
-    setLogs(logs => `${logs}Job ${job.id} created.\nEncrypting witness using Worker public key:\n${Buffer.from(job.encryptKey, "base64").toString("utf-8")}\n`);
+    setLogs(logs => `${logs}Job ${job.data.id} created.\nEncrypting witness using Worker public key:\n${Buffer.from(job.data.encryptKey, "base64").toString("utf-8")}\n`);
 
     const encryptResponse = await fetch("/api/encrypt", {
       method: "POST",
@@ -49,7 +55,7 @@ export default function DemoPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        base64EnclavePublicKey: job.encryptKey,
+        base64EnclavePublicKey: job.data.encryptKey,
         base64Witness: form.witness,
       }),
     });
@@ -58,7 +64,7 @@ export default function DemoPage() {
     setLogs(logs => `${logs}Witness encrypted succesfuly.\nStarting job...`);
 
     await callHub("/jobs/start", "POST", {
-      jobId: job.id,
+      jobId: job.data.id,
       witness: base64EncryptedWitness,
       aesKey: base64EncryptedAesKey,
       aesIv: base64AesIv,
@@ -67,9 +73,9 @@ export default function DemoPage() {
     setLogs(logs => `${logs}Done.\nWaiting for proof...`);
 
     const jobInterval = setInterval(async () => {
-      const jobInfo = await callHub(`/jobs/${job.id}`, "GET");
-      if (jobInfo && jobInfo.proof) {
-        setProof(jobInfo.proof);
+      const jobInfo = await callHub(`/jobs/${job.data.id}`, "GET");
+      if (jobInfo && jobInfo.data.proof) {
+        setProof(jobInfo.data.proof);
         clearInterval(jobInterval);
 
         setLogs(logs => `${logs}Done.`);
@@ -99,13 +105,23 @@ export default function DemoPage() {
       options,
     );
 
+    const data = await response.json();
+
     if (!response.ok) {
+      if (response.status === 400) {
+        return {
+          success: false,
+          error: data.error,
+        };
+      }
+
       throw new Error("Failed to fetch data from the server.");
     }
 
-    const data = await response.json();
-
-    return data;
+    return {
+      success: true,
+      data,
+    };
   }
 
   return (
@@ -172,6 +188,7 @@ export default function DemoPage() {
                 id="send"
                 type="submit"
                 label="Compute Proof"
+                disabled={loading || !form.witness || !form.r1csScript || !escrowBalance || escrowBalance.eq(0)}
               />
             </div>
 

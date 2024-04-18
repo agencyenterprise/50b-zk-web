@@ -131,7 +131,7 @@ export default function BuyCreditsPage() {
               <Button
                 id={`button-${tier.id}`}
                 type="button"
-                label="Buy plan"
+                label="Buy credits"
                 className="w-full mt-4"
                 onClick={() => {
                   handleBuy(tier);
