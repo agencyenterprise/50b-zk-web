@@ -7,17 +7,13 @@ import React, {
 } from "react";
 import { createThirdwebClient, defineChain, getContract, readContract } from "thirdweb";
 import { useActiveAccount } from "thirdweb/react";
-import { Wallet } from "thirdweb/wallets";
 import { BigNumber } from "ethers";
 
 // Create the context
-
 const ChainContext = createContext({
   client: {} as ReturnType<typeof createThirdwebClient>,
   escrowContract: {} as ReturnType<typeof getContract> | undefined,
   tokenContract: {} as ReturnType<typeof getContract> | undefined,
-  setWallet: (wallet: Wallet) => {},
-  wallet: {} as Wallet | undefined,
   escrowBalance: {} as BigNumber | undefined,
   fetchEscrowBalance: () => {},
 });
@@ -30,12 +26,74 @@ export function ChainProvider({ children }: { children: React.ReactNode }) {
     }),
   );
 
-  const [wallet, setWallet] = useState<Wallet>();
   const [escrowContract, setEscrowContract] = useState<ReturnType<typeof getContract>>();
   const [tokenContract, setTokenContract] = useState<ReturnType<typeof getContract>>();
   const [escrowBalance, setEscrowBalance] = useState<BigNumber>();
 
   const activeAccount = useActiveAccount();
+
+  const register = async (address: string) => {
+    const options = {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: address,
+        password: address,
+        paymentPublicKey: address,
+      }),
+    };
+
+    await fetch(`${process.env.NEXT_PUBLIC_HUB_URL}/auth/register`, options);
+  };
+
+  const login = async (address: string) => {
+    const options = {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: address,
+        password: address,
+      }),
+    } as RequestInit;
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_HUB_URL}/auth/login`, options);
+    
+    if (response.status === 200) {
+      const data = await response.json();
+
+      localStorage.setItem("clientId", data._id);
+
+      if (data.authentication.apiKey) {
+        localStorage.setItem("apiKey", data.authentication.apiKey);
+      } else {
+        const apiKey = await generateApiKey(data.authentication.sessionToken);
+        localStorage.setItem("apiKey", apiKey); 
+      }
+
+      return true;
+    }
+
+    return false;
+  };
+
+  const generateApiKey = async (sessionToken: string) => {
+    const options = {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    } as RequestInit;
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_HUB_URL}/auth/generateApiKey`, options);
+    
+    if (response.status === 200) {
+      const data = await response.json();
+
+      return data.apiKey;
+    }
+  }
 
   const fetchEscrowBalance = () => {
     if (activeAccount && escrowContract) {
@@ -72,13 +130,32 @@ export function ChainProvider({ children }: { children: React.ReactNode }) {
   }, [client]);
 
   useEffect(() => {
+    if (activeAccount) {
+      const loginProcess = async () => {
+        try {
+          const loggedIn = await login(activeAccount.address);
+
+          if (!loggedIn) {
+            await register(activeAccount.address);
+            await login(activeAccount.address);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      loginProcess();
+    }
+  }, [activeAccount]);
+
+  useEffect(() => {
     fetchEscrowBalance();
   }, [activeAccount, escrowContract]);
 
   // Memoize the context value to optimize performance
   const value = useMemo(
-    () => ({ client, escrowContract, tokenContract, wallet, setWallet, escrowBalance, fetchEscrowBalance}),
-    [client, escrowContract, tokenContract, wallet, setWallet, escrowBalance, fetchEscrowBalance],
+    () => ({ client, escrowContract, tokenContract, escrowBalance, fetchEscrowBalance}),
+    [client, escrowContract, tokenContract, escrowBalance, fetchEscrowBalance],
   );
 
   return (

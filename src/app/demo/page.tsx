@@ -4,9 +4,7 @@ import { useState } from "react";
 
 import Button from "@/components/Button";
 import InputField from "@/components/Input";
-import LoadingSpinner from "@/components/Loading";
 
-import { encryptWitness } from "@/utils/cryptography";
 import { useChain } from "@/contexts/Chain";
 
 const base64ExampleWitness = "d3RucwIAAAACAAAAAQAAACgAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAIAAACAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
@@ -15,8 +13,8 @@ const base64ExampleR1csScript = "cjFjcwEAAAADAAAAAgAAAHgAAAAAAAAAAQAAAAIAAAAAAAD
 export default function DemoPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
-    witness: "",
-    r1csScript: "",
+    witness: base64ExampleWitness,
+    r1csScript: base64ExampleR1csScript,
   });
   const [logs, setLogs] = useState("");
   const [proof, setProof] = useState("");
@@ -33,53 +31,68 @@ export default function DemoPage() {
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
+    setProof("");
 
     setLogs(`Creating a new job...`);
 
-    // const job = await callHub("/jobs", {
-    //   clientId: "123",
-    //   r1csScript: form.r1csScript,
-    // });
-    const job = {
-      id: 1,
-      encryptKey: "LS0tLS1CRUdJTiBQVUJMSUMgS0VZLS0tLS0KTUlJQklqQU5CZ2txaGtpRzl3MEJBUUVGQUFPQ0FROEFNSUlCQ2dLQ0FRRUExL1ZuQ3VBQjhSeC9sa0JHMDF4RApOUk8rQkF1MVBraGtpOFYxWWYrV3lHajlYU0JzRFhpb3o5MG5jUXNkZnNhUXBuck1qTExIbG9veWpSY1ZTMzNiCk5ycHdld1lNRUI3TEYzVUluOHF0Q1pjTm5RYjU2UjBKZjBFcWhTYjFQWWpEVGxEYS9QMVdkT2xsdi9qS3ZuNm4KYVh5d3FVcVVFZ1lUbVhvcnpwaUtKcy9OTlFsWmwwSmMvdGdhWURXSE96R1hmTk5pdU9lMlM5VUoxUUR0L1YxVApDTXp4MFJsQU15VzBDcURlc1JnRTJpNFhXaWxEczNQUnR4MW1VWnVhVWJUZkxHWDRVbkxLQXZncHd5c05vVGczCjduOUZsVmdCUy9DL2NxdS9kTzkxL0xIWWhVT0s0MUVIZjNTTFIyMFVNaGpmd2RMMHFZVm45Wlh0Mi9uKytBaTEKN3dJREFRQUIKLS0tLS1FTkQgUFVCTElDIEtFWS0tLS0t",
-    };
-
-    await delay(3000);
+    const clientId = localStorage.getItem("clientId");
+    const job = await callHub("/jobs", "POST", {
+      clientId,
+      r1csScript: form.r1csScript,
+    });
+    
     setLogs(logs => `${logs}Job ${job.id} created.\nEncrypting witness using Worker public key:\n${Buffer.from(job.encryptKey, "base64").toString("utf-8")}\n`);
 
-    const { base64EncryptedWitness, base64EncryptedAesKey, base64AesIv } = encryptWitness(job.encryptKey, form.witness);
+    const encryptResponse = await fetch("/api/encrypt", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        base64EnclavePublicKey: job.encryptKey,
+        base64Witness: form.witness,
+      }),
+    });
+    const { base64EncryptedWitness, base64EncryptedAesKey, base64AesIv } = await encryptResponse.json();
+
     setLogs(logs => `${logs}Witness encrypted succesfuly.\nStarting job...`);
 
-    // await callHub("/jobs/start", {
-    //   jobId: job.id,
-    //   witness: base64EncryptedWitness,
-    //   aesKey: base64EncryptedAesKey,
-    //   aesIv: base64AesIv,
-    // });
+    await callHub("/jobs/start", "POST", {
+      jobId: job.id,
+      witness: base64EncryptedWitness,
+      aesKey: base64EncryptedAesKey,
+      aesIv: base64AesIv,
+    });
 
-    await delay(3000);
     setLogs(logs => `${logs}Done.\nWaiting for proof...`);
 
-    await delay(3000);
-    setProof("0x1234567890");
-    setLogs(logs => `${logs}Done.`);
+    const jobInterval = setInterval(async () => {
+      const jobInfo = await callHub(`/jobs/${job.id}`, "GET");
+      if (jobInfo && jobInfo.proof) {
+        setProof(jobInfo.proof);
+        clearInterval(jobInterval);
 
-    fetchEscrowBalance();
-
-    setLoading(false);
+        setLogs(logs => `${logs}Done.`);
+        fetchEscrowBalance();
+        setLoading(false);    
+      }
+    }, 3000);
   };
 
-  const delay = (delayInms: number) => {
-    return new Promise(resolve => setTimeout(resolve, delayInms));
-  };
+  const callHub = async (url: string, method: string, body?: any) => {
+    const apiKey = localStorage.getItem("apiKey");
 
-  const callHub = async (url: string, body: any) => {
     const options = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    };
+      method: method,
+      headers: {
+        "Content-Type": "application/json",
+        "api_key": apiKey!,
+      }
+    } as RequestInit;
+
+    if (body) {
+      options.body = JSON.stringify(body);
+    }
 
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_HUB_URL}${url}`,
@@ -161,9 +174,10 @@ export default function DemoPage() {
                 label="Compute Proof"
               />
             </div>
+
             {logs && <div className="mt-3 text-white">
               <h3 className="text-2xl font-bold tracking-tight text-white">Logs:</h3>
-              <pre className="leading-8 text-gray-300">
+              <pre className="text-xs leading-8 text-gray-300">
                 {logs}
               </pre>
             </div>}
@@ -173,15 +187,13 @@ export default function DemoPage() {
         <div className="relative px-6 pb-20 pt-24 sm:pt-32 lg:static lg:px-8 lg:py-40">
           <div className="mx-auto max-w-xl lg:mx-0 lg:max-w-lg">
             <h3 className="text-2xl  font-bold tracking-tight text-white">
-              Proof Result
+              Proof Result:
             </h3>
-            {loading ? (
-              <LoadingSpinner />
-            ) : (
-              <p className="mt-6 text-lg leading-8 text-gray-300">
-                {proof}
+            {proof &&
+              <p className="mt-6 text-xs text-gray-300">
+                {JSON.stringify(JSON.parse(Buffer.from(proof, "base64").toString("utf-8")), null, 2)}
               </p>
-            )}
+            }
           </div>
         </div>
       </div>

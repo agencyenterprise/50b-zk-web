@@ -3,7 +3,8 @@
 import { CheckIcon } from "@heroicons/react/20/solid";
 import Button from "@/components/Button";
 import { useChain } from "@/contexts/Chain";
-import { toWei, prepareContractCall, sendTransaction } from "thirdweb";
+import { toWei, prepareContractCall, sendAndConfirmTransaction } from "thirdweb";
+import { useActiveAccount } from "thirdweb/react";
 
 type Tier = {
   name: string;
@@ -46,7 +47,8 @@ const tiers: Tier[] = [
 ];
 
 export default function BuyCreditsPage() {
-  const { client, escrowContract, tokenContract, wallet } = useChain();
+  const { client, escrowContract, tokenContract, fetchEscrowBalance } = useChain();
+  const activeAccount = useActiveAccount();
 
   const handleBuy = async (tier: Tier) => {
     if (!client || !escrowContract || !tokenContract) {
@@ -54,10 +56,8 @@ export default function BuyCreditsPage() {
     }
 
     try {
-      const account = wallet?.getAccount();
-      if (!account) return;
+      if (!activeAccount) return;
 
-      console.log("Approving...");
       const approveTx = prepareContractCall({
         contract: tokenContract,
         // Pass the method signature that you want to call
@@ -67,13 +67,11 @@ export default function BuyCreditsPage() {
         params: [escrowContract?.address, toWei((tier?.price || 5).toString())],
       });
 
-      const approveTxResult = await sendTransaction({
+      await sendAndConfirmTransaction({
         transaction: approveTx,
-        account,
+        account: activeAccount,
       });
-      console.log("Approved?", approveTxResult);
 
-      console.log("Depositing...");
       const depositTx = prepareContractCall({
         contract: escrowContract,
         // Pass the method signature that you want to call
@@ -83,11 +81,12 @@ export default function BuyCreditsPage() {
         params: [toWei((tier?.price || 5).toString())],
       });
 
-      const depositTxResult = await sendTransaction({
+      await sendAndConfirmTransaction({
         transaction: depositTx,
-        account,
+        account: activeAccount,
       });
-      console.log("Deposited?", depositTxResult);
+      
+      fetchEscrowBalance();
     } catch (e) {
       console.log("error", e);
     }

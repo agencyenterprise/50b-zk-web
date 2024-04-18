@@ -6,8 +6,6 @@ export function encryptWitness(base64EnclavePublicKey: string, base64Witness: st
       "base64"
     ).toString("utf-8");
 
-    console.log(enclavePublicKey);
-  
     const aes_key = crypto.randomBytes(32);
     const aes_iv = crypto.randomBytes(16);
     const cipher_aes = crypto.createCipheriv("aes-256-cbc", aes_key, aes_iv);
