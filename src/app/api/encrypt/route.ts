@@ -1,4 +1,4 @@
-import { encryptWitness, test } from "@/utils/cryptography";
+import { encryptWitness } from "@/utils/cryptography";
 
 export async function POST(req: Request) {
     const data = await req.json();
