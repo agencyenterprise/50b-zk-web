@@ -9,6 +9,7 @@ export default function FaucetPage() {
 
   const handleGetTokens = async () => {
     if (!activeAccount) {
+      toast.error("Please connect your wallet.");
       return;
     }
 
