@@ -17,15 +17,12 @@ export default function FaucetPage() {
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({ walletAddress: activeAccount.address })
     } as RequestInit;
-
-    options.body = JSON.stringify({
-      walletAddress: activeAccount.address
-    });
 
     const response = await fetch(
       `${process.env.NEXT_PUBLIC_HUB_URL}/faucet`,
-      options,
+      options
     );
 
     const data = await response.json();
