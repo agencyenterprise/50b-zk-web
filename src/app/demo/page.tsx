@@ -7,8 +7,10 @@ import InputField from "@/components/Input";
 
 import { useChain } from "@/contexts/Chain";
 
-const base64ExampleWitness = "d3RucwIAAAACAAAAAQAAACgAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAIAAACAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
-const base64ExampleR1csScript = "cjFjcwEAAAADAAAAAgAAAHgAAAAAAAAAAQAAAAIAAAAAAADwk/XhQ5FwuXlI6DMoXViBgbZFULgpoDHhck5kMAEAAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwAQAAAEAAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAEAAAAAAAAAAgAAAAQAAAAAAAAAAQAAAAMAAAAgAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAMAAAAAAAAA";
+const base64ExampleWitness =
+  "d3RucwIAAAACAAAAAQAAACgAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAIAAACAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+const base64ExampleR1csScript =
+  "cjFjcwEAAAADAAAAAgAAAHgAAAAAAAAAAQAAAAIAAAAAAADwk/XhQ5FwuXlI6DMoXViBgbZFULgpoDHhck5kMAEAAAADAAAAAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABAAAAAQAAAAAAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwAQAAAEAAAAAAAAAAIAAAAAEAAPCT9eFDkXC5eUjoMyhdWIGBtkVQuCmgMeFyTmQwBAAAAAEAAAAAAAAAAgAAAAQAAAAAAAAAAQAAAAMAAAAgAAAAAAAAAAAAAAAAAAAAAQAAAAAAAAACAAAAAAAAAAMAAAAAAAAA";
 
 export default function DemoPage() {
   const [loading, setLoading] = useState(false);
@@ -20,7 +22,7 @@ export default function DemoPage() {
   const [proof, setProof] = useState("");
 
   const { fetchEscrowBalance, escrowBalance } = useChain();
- 
+
   const handleChange = (e: any) => {
     setForm({
       ...form,
@@ -42,12 +44,20 @@ export default function DemoPage() {
     });
 
     if (!job.success) {
-      setLogs(logs => `${logs}Job not created: ${job.error}`);
+      setLogs((logs) => `${logs}Job not created: ${job.error}`);
       setLoading(false);
       return;
     }
-    
-    setLogs(logs => `${logs}Job ${job.data.id} created.\nEncrypting witness using Worker public key:\n${Buffer.from(job.data.encryptKey, "base64").toString("utf-8")}\n`);
+
+    setLogs(
+      (logs) =>
+        `${logs}Job ${
+          job.data.id
+        } created.\nEncrypting witness using Worker public key:\n${Buffer.from(
+          job.data.encryptKey,
+          "base64",
+        ).toString("utf-8")}\n`,
+    );
 
     const encryptResponse = await fetch("/api/encrypt", {
       method: "POST",
@@ -59,9 +69,10 @@ export default function DemoPage() {
         base64Witness: form.witness,
       }),
     });
-    const { base64EncryptedWitness, base64EncryptedAesKey, base64AesIv } = await encryptResponse.json();
+    const { base64EncryptedWitness, base64EncryptedAesKey, base64AesIv } =
+      await encryptResponse.json();
 
-    setLogs(logs => `${logs}Witness encrypted succesfuly.\nStarting job...`);
+    setLogs((logs) => `${logs}Witness encrypted succesfuly.\nStarting job...`);
 
     await callHub("/jobs/start", "POST", {
       jobId: job.data.id,
@@ -70,7 +81,7 @@ export default function DemoPage() {
       aesIv: base64AesIv,
     });
 
-    setLogs(logs => `${logs}Done.\nWaiting for proof...`);
+    setLogs((logs) => `${logs}Done.\nWaiting for proof...`);
 
     const jobInterval = setInterval(async () => {
       const jobInfo = await callHub(`/jobs/${job.data.id}`, "GET");
@@ -78,9 +89,9 @@ export default function DemoPage() {
         setProof(jobInfo.data.proof);
         clearInterval(jobInterval);
 
-        setLogs(logs => `${logs}Done.`);
+        setLogs((logs) => `${logs}Done.`);
         fetchEscrowBalance();
-        setLoading(false);    
+        setLoading(false);
       }
     }, 3000);
   };
@@ -92,8 +103,8 @@ export default function DemoPage() {
       method: method,
       headers: {
         "Content-Type": "application/json",
-        "api_key": apiKey!,
-      }
+        api_key: apiKey!,
+      },
     } as RequestInit;
 
     if (body) {
@@ -122,10 +133,10 @@ export default function DemoPage() {
       success: true,
       data,
     };
-  }
+  };
 
   return (
-    <div className="relative isolate bg-gray-900">
+    <div className="relative isolate bg-gray-900 h-screen">
       <div className="mx-auto grid max-w-7xl grid-cols-1 lg:grid-cols-2">
         <div className="absolute inset-y-0 right-0 -z-10 w-full overflow-hidden ring-1 ring-white/5 lg:w-1/2">
           <svg
@@ -180,24 +191,42 @@ export default function DemoPage() {
               proof
             </h3>
             <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
-              <InputField label="Witness (Base64 encoded)" id="witness" defaultValue={base64ExampleWitness} onChange={handleChange} />
-              <InputField label="R1CS Script (Base64 encoded)" id="r1csScript" defaultValue={base64ExampleR1csScript} onChange={handleChange} />
+              <InputField
+                label="Witness (Base64 encoded)"
+                id="witness"
+                defaultValue={base64ExampleWitness}
+                onChange={handleChange}
+              />
+              <InputField
+                label="R1CS Script (Base64 encoded)"
+                id="r1csScript"
+                defaultValue={base64ExampleR1csScript}
+                onChange={handleChange}
+              />
             </div>
             <div className="mt-8 flex justify-end">
               <Button
                 id="send"
                 type="submit"
                 label="Compute Proof"
-                disabled={loading || !form.witness || !form.r1csScript || !escrowBalance || escrowBalance.eq(0)}
+                disabled={
+                  loading ||
+                  !form.witness ||
+                  !form.r1csScript ||
+                  !escrowBalance ||
+                  escrowBalance.eq(0)
+                }
               />
             </div>
 
-            {logs && <div className="mt-3 text-white">
-              <h3 className="text-2xl font-bold tracking-tight text-white">Logs:</h3>
-              <pre className="text-xs leading-8 text-gray-300">
-                {logs}
-              </pre>
-            </div>}
+            {logs && (
+              <div className="mt-3 text-white">
+                <h3 className="text-2xl font-bold tracking-tight text-white">
+                  Logs:
+                </h3>
+                <pre className="text-xs leading-8 text-gray-300">{logs}</pre>
+              </div>
+            )}
           </div>
         </form>
 
@@ -206,11 +235,15 @@ export default function DemoPage() {
             <h3 className="text-2xl  font-bold tracking-tight text-white">
               Proof Result:
             </h3>
-            {proof &&
+            {proof && (
               <p className="mt-6 text-xs text-gray-300">
-                {JSON.stringify(JSON.parse(Buffer.from(proof, "base64").toString("utf-8")), null, 2)}
+                {JSON.stringify(
+                  JSON.parse(Buffer.from(proof, "base64").toString("utf-8")),
+                  null,
+                  2,
+                )}
               </p>
-            }
+            )}
           </div>
         </div>
       </div>
